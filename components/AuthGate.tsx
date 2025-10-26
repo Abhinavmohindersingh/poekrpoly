@@ -9,6 +9,11 @@ export default function AuthGate() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
+
     // Check for existing session
     const init = async () => {
       const { data } = await supabase.auth.getSession();
