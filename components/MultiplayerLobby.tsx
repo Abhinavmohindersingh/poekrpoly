@@ -7,12 +7,14 @@ import { Users, Plus, LogIn, ArrowLeft } from "lucide-react";
 interface MultiplayerLobbyProps {
   onCreateRoom: () => void;
   onJoinRoom: (roomCode: string) => void;
+  onSinglePlayer: () => void;
   onBack?: () => void;
 }
 
 export default function MultiplayerLobby({
   onCreateRoom,
   onJoinRoom,
+  onSinglePlayer,
   onBack,
 }: MultiplayerLobbyProps) {
   const [roomCode, setRoomCode] = useState("");
@@ -63,6 +65,23 @@ export default function MultiplayerLobby({
           {!showJoinInput ? (
             /* Main Menu */
             <div className="space-y-3 sm:space-y-4">
+              {/* Single Player Button */}
+              <button
+                onClick={onSinglePlayer}
+                className="w-full bg-gradient-to-r from-purple-600 to-pink-700 hover:from-purple-500 hover:to-pink-600 text-white font-bold py-4 sm:py-6 px-6 sm:px-8 rounded-xl shadow-2xl transition-all hover:scale-105 active:scale-95 border border-purple-400/50 sm:border-2 group relative overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 transform -skew-x-12 group-hover:translate-x-full transition-transform duration-700"></div>
+                <div className="relative flex items-center justify-center gap-2 sm:gap-3">
+                  <span className="text-2xl sm:text-3xl flex-shrink-0">🎮</span>
+                  <div className="text-left">
+                    <div className="text-lg sm:text-2xl">Single Player</div>
+                    <div className="text-xs sm:text-sm text-purple-100">
+                      Play all 4 players yourself
+                    </div>
+                  </div>
+                </div>
+              </button>
+
               {/* Create Room Button */}
               <button
                 onClick={onCreateRoom}
