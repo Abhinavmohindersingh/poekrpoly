@@ -1239,18 +1239,10 @@ function App() {
 
   useEffect(() => {
     const getCurrentUser = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        setCurrentUserId(user.id);
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("username")
-          .eq("id", user.id)
-          .single();
-        setCurrentUsername(profile?.username || "Player");
-      }
+      const mockUserId = `guest-${Math.random().toString(36).substring(7)}`;
+      const mockUsername = `Guest${Math.floor(Math.random() * 1000)}`;
+      setCurrentUserId(mockUserId);
+      setCurrentUsername(mockUsername);
     };
     getCurrentUser();
   }, []);
