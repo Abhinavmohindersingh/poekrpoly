@@ -1459,8 +1459,7 @@ function App() {
     <div
       className="w-screen h-screen flex items-center justify-center overflow-hidden relative"
       style={{
-        backgroundImage:
-          "url(/games/pokeropoly/images/background.png)",
+        background: "linear-gradient(135deg, #1a472a 0%, #2d5a3d 25%, #1e3a28 50%, #0f2419 75%, #0a1810 100%)",
         backgroundSize: "cover",
         backgroundPosition: "center",
       }}
