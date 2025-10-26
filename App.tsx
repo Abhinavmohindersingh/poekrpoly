@@ -5,7 +5,6 @@ import { PenaltyModal } from "./components/PenaltyModal";
 import { AuctionModal } from "./components/AuctionModal";
 import { SellCardsModal } from "./components/SellCardsModal";
 import { MiniSlotMachine } from "./components/MiniSlotMachine";
-import { supabase } from "./lib/supabase";
 import { RulesPanel } from "./components/RulesPanel";
 import MultiplayerLobby from "./components/MultiplayerLobby";
 import WaitingRoom from "./components/WaitingRoom";
