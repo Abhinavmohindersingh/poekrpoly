@@ -1,3 +1,4 @@
+// src/games/pokeropoly/components/MultiplayerLobby.tsx
 import React from "react";
 
 import { useState } from "react";
@@ -6,14 +7,12 @@ import { Users, Plus, LogIn, ArrowLeft } from "lucide-react";
 interface MultiplayerLobbyProps {
   onCreateRoom: () => void;
   onJoinRoom: (roomCode: string) => void;
-  onSinglePlayer: () => void;
   onBack?: () => void;
 }
 
 export default function MultiplayerLobby({
   onCreateRoom,
   onJoinRoom,
-  onSinglePlayer,
   onBack,
 }: MultiplayerLobbyProps) {
   const [roomCode, setRoomCode] = useState("");
@@ -34,6 +33,7 @@ export default function MultiplayerLobby({
         backgroundPosition: "center",
       }}
     >
+      {/* Back Button */}
       {onBack && (
         <button
           onClick={onBack}
@@ -44,7 +44,9 @@ export default function MultiplayerLobby({
         </button>
       )}
 
+      {/* Main Content */}
       <div className="relative z-10 w-full max-w-2xl px-4">
+        {/* Title Card */}
         <div className="bg-gradient-to-br from-gray-900/95 to-gray-800/95 backdrop-blur-xl border-2 sm:border-4 border-yellow-500/50 rounded-2xl sm:rounded-3xl shadow-2xl p-5 sm:p-8 mb-4 sm:mb-8">
           <div className="text-center mb-6 sm:mb-8">
             <div className="inline-block bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full p-3 sm:p-4 mb-3 sm:mb-4 shadow-lg shadow-yellow-500/50">
@@ -59,23 +61,9 @@ export default function MultiplayerLobby({
           </div>
 
           {!showJoinInput ? (
+            /* Main Menu */
             <div className="space-y-3 sm:space-y-4">
-              <button
-                onClick={onSinglePlayer}
-                className="w-full bg-gradient-to-r from-purple-600 to-pink-700 hover:from-purple-500 hover:to-pink-600 text-white font-bold py-4 sm:py-6 px-6 sm:px-8 rounded-xl shadow-2xl transition-all hover:scale-105 active:scale-95 border border-purple-400/50 sm:border-2 group relative overflow-hidden"
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 transform -skew-x-12 group-hover:translate-x-full transition-transform duration-700"></div>
-                <div className="relative flex items-center justify-center gap-2 sm:gap-3">
-                  <span className="text-2xl sm:text-3xl flex-shrink-0">🎮</span>
-                  <div className="text-left">
-                    <div className="text-lg sm:text-2xl">Single Player</div>
-                    <div className="text-xs sm:text-sm text-purple-100">
-                      Play all 4 players yourself
-                    </div>
-                  </div>
-                </div>
-              </button>
-
+              {/* Create Room Button */}
               <button
                 onClick={onCreateRoom}
                 className="w-full bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-500 hover:to-emerald-600 text-white font-bold py-4 sm:py-6 px-6 sm:px-8 rounded-xl shadow-2xl transition-all hover:scale-105 active:scale-95 border border-green-400/50 sm:border-2 group relative overflow-hidden"
@@ -92,6 +80,7 @@ export default function MultiplayerLobby({
                 </div>
               </button>
 
+              {/* Join Room Button */}
               <button
                 onClick={() => setShowJoinInput(true)}
                 className="w-full bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-500 hover:to-indigo-600 text-white font-bold py-4 sm:py-6 px-6 sm:px-8 rounded-xl shadow-2xl transition-all hover:scale-105 active:scale-95 border border-blue-400/50 sm:border-2 group relative overflow-hidden"
@@ -109,6 +98,7 @@ export default function MultiplayerLobby({
               </button>
             </div>
           ) : (
+            /* Join Room Input */
             <div className="space-y-4 sm:space-y-6">
               <button
                 onClick={() => {
@@ -167,6 +157,7 @@ export default function MultiplayerLobby({
           )}
         </div>
 
+        {/* Info Cards */}
         <div className="grid grid-cols-3 gap-2 sm:gap-4">
           <div className="bg-gray-900/80 backdrop-blur-sm border border-gray-700 rounded-lg sm:rounded-xl p-3 sm:p-4 text-center">
             <div className="text-2xl sm:text-3xl font-bold text-yellow-400 mb-0 sm:mb-1">
@@ -189,6 +180,7 @@ export default function MultiplayerLobby({
         </div>
       </div>
 
+      {/* Decorative Elements */}
       <div className="hidden sm:block absolute top-10 left-10 text-6xl opacity-20 animate-pulse">
         ♠
       </div>

@@ -5,6 +5,7 @@ import { PenaltyModal } from "./components/PenaltyModal";
 import { AuctionModal } from "./components/AuctionModal";
 import { SellCardsModal } from "./components/SellCardsModal";
 import { MiniSlotMachine } from "./components/MiniSlotMachine";
+import { supabase } from "./lib/supabase";
 import { RulesPanel } from "./components/RulesPanel";
 import MultiplayerLobby from "./components/MultiplayerLobby";
 import WaitingRoom from "./components/WaitingRoom";
@@ -303,8 +304,8 @@ function App() {
   );
 
   const endTurn = useCallback(async () => {
-    if (playersRef.current.length === 0) {
-      log("⏹️", "END TURN SKIPPED - NO PLAYERS");
+    if (!currentRoom || playersRef.current.length === 0) {
+      log("⏹️", "END TURN SKIPPED - NO ROOM/PLAYERS");
       return;
     }
 
@@ -316,15 +317,13 @@ function App() {
     );
 
     try {
-      if (currentRoom) {
-        await RoomService.broadcastAction(
-          currentRoom.id,
-          currentUserId,
-          safeCurrent,
-          "endTurn",
-          { next_player_index: nextIndex }
-        );
-      }
+      await RoomService.broadcastAction(
+        currentRoom.id,
+        currentUserId,
+        safeCurrent,
+        "endTurn",
+        { next_player_index: nextIndex }
+      );
 
       currentIndexRef.current = nextIndex;
       setCurrentPlayerIndex(nextIndex);
@@ -438,8 +437,9 @@ function App() {
 
   const handleDrawFromShoe = useCallback(
     async (total: number, isPair: boolean) => {
-      if (isRolling || playersRef.current.length === 0) {
+      if (!currentRoom || isRolling || playersRef.current.length === 0) {
         log("⏹️", "ROLL SKIPPED", {
+          room: !!currentRoom,
           rolling: isRolling,
           players: playersRef.current.length,
         });
@@ -448,19 +448,17 @@ function App() {
 
       const safeIndex = getSafePlayerIndex(currentIndexRef.current, "rollDice");
 
-      if (currentRoom) {
-        const isMyTurn = roomPlayers[safeIndex]?.user_id === currentUserId;
-        log("🎲", "ROLL CHECK", {
-          safeIndex,
-          isMyTurn,
-          userId: currentUserId,
-          playerUserId: roomPlayers[safeIndex]?.user_id,
-        });
+      const isMyTurn = roomPlayers[safeIndex]?.user_id === currentUserId;
+      log("🎲", "ROLL CHECK", {
+        safeIndex,
+        isMyTurn,
+        userId: currentUserId,
+        playerUserId: roomPlayers[safeIndex]?.user_id,
+      });
 
-        if (!isMyTurn) {
-          log("❌", "NOT YOUR TURN - ROLL BLOCKED");
-          return;
-        }
+      if (!isMyTurn) {
+        log("❌", "NOT YOUR TURN - ROLL BLOCKED");
+        return;
       }
 
       currentIndexRef.current = safeIndex;
@@ -471,16 +469,14 @@ function App() {
       log("🎲", `ROLL BY PLAYER ${safeIndex} Total: ${total} Pair: ${isPair}`);
 
       try {
-        if (currentRoom) {
-          await RoomService.broadcastAction(
-            currentRoom.id,
-            currentUserId,
-            safeIndex,
-            "rollDice",
-            { total, isPair }
-          );
-          log("✅", "ROLL BROADCASTED");
-        }
+        await RoomService.broadcastAction(
+          currentRoom.id,
+          currentUserId,
+          safeIndex,
+          "rollDice",
+          { total, isPair }
+        );
+        log("✅", "ROLL BROADCASTED");
 
         log("🚀", "PROCESSING OWN MOVEMENT");
         await handleMoveFromShoe(total, isPair);
@@ -721,7 +717,7 @@ function App() {
   }, [gameMode, currentRoom, log]);
 
   const handleBuyCard = useCallback(async () => {
-    if (!landedCard || playersRef.current.length === 0) return;
+    if (!landedCard || !currentRoom || playersRef.current.length === 0) return;
     const safeIndex = getSafePlayerIndex(currentIndexRef.current, "buyCard");
     const finalPosition = playerPositions[safeIndex];
     const cardPrice = getCardPrice(landedCard.value);
@@ -748,20 +744,18 @@ function App() {
       player_index: safeIndex,
     });
 
-    if (currentRoom) {
-      await RoomService.broadcastAction(
-        currentRoom.id,
-        currentUserId,
-        safeIndex,
-        "buyCard",
-        {
-          position: finalPosition,
-          card: landedCard,
-          price: cardPrice,
-          player_index: safeIndex,
-        }
-      );
-    }
+    await RoomService.broadcastAction(
+      currentRoom.id,
+      currentUserId,
+      safeIndex,
+      "buyCard",
+      {
+        position: finalPosition,
+        card: landedCard,
+        price: cardPrice,
+        player_index: safeIndex,
+      }
+    );
 
     setLandedCard(null);
     setPenaltyInfo(null);
@@ -779,7 +773,7 @@ function App() {
   ]);
 
   const handlePayPenalty = useCallback(async () => {
-    if (!penaltyInfo || playersRef.current.length === 0) return;
+    if (!penaltyInfo || !currentRoom || playersRef.current.length === 0) return;
     const safeIndex = getSafePlayerIndex(currentIndexRef.current, "payPenalty");
 
     log("💸", "PAY PENALTY INITIATED", {
@@ -794,19 +788,17 @@ function App() {
       amount: penaltyInfo.penalty,
     });
 
-    if (currentRoom) {
-      await RoomService.broadcastAction(
-        currentRoom.id,
-        currentUserId,
-        safeIndex,
-        "payPenalty",
-        {
-          payerIndex: safeIndex,
-          receiverIndex: getSafePlayerIndex(penaltyInfo.ownerIndex, "payPenalty"),
-          amount: penaltyInfo.penalty,
-        }
-      );
-    }
+    await RoomService.broadcastAction(
+      currentRoom.id,
+      currentUserId,
+      safeIndex,
+      "payPenalty",
+      {
+        payerIndex: safeIndex,
+        receiverIndex: getSafePlayerIndex(penaltyInfo.ownerIndex, "payPenalty"),
+        amount: penaltyInfo.penalty,
+      }
+    );
 
     setPenaltyInfo(null);
     setTimeout(() => endTurn(), 500);
@@ -1053,66 +1045,6 @@ function App() {
     }
   }, [currentRoom, currentUserId, isHost, initializeFromGameState, log]);
 
-  const handleSinglePlayer = useCallback(() => {
-    log("🎮", "STARTING SINGLE PLAYER MODE");
-
-    const singlePlayers: Player[] = [
-      {
-        name: "Player 1",
-        chips: 1500,
-        color: "#FF6B6B",
-        position: "bottom",
-        collectedCards: [],
-        boughtCards: [],
-        boardPosition: 0,
-        suit: "♠",
-      },
-      {
-        name: "Player 2",
-        chips: 1500,
-        color: "#4ECDC4",
-        position: "left",
-        collectedCards: [],
-        boughtCards: [],
-        boardPosition: 16,
-        suit: "♥",
-      },
-      {
-        name: "Player 3",
-        chips: 1500,
-        color: "#45B7D1",
-        position: "top",
-        collectedCards: [],
-        boughtCards: [],
-        boardPosition: 32,
-        suit: "♦",
-      },
-      {
-        name: "Player 4",
-        chips: 1500,
-        color: "#96CEB4",
-        position: "right",
-        collectedCards: [],
-        boughtCards: [],
-        boardPosition: 48,
-        suit: "♣",
-      },
-    ];
-
-    playersRef.current = singlePlayers;
-    currentIndexRef.current = 0;
-
-    setPlayers(singlePlayers);
-    setCurrentPlayerIndex(0);
-    setPlayerPositions([0, 16, 32, 48]);
-    setGameStarted(true);
-    setCardOwners({});
-    setHasRolledThisTurn(false);
-    setGameMode("playing");
-
-    log("✅", "SINGLE PLAYER INITIALIZED");
-  }, [log]);
-
   const handleLeaveRoom = useCallback(async () => {
     if (!currentRoom || !currentUserId) return;
 
@@ -1307,10 +1239,18 @@ function App() {
 
   useEffect(() => {
     const getCurrentUser = async () => {
-      const mockUserId = `guest-${Math.random().toString(36).substring(7)}`;
-      const mockUsername = `Guest${Math.floor(Math.random() * 1000)}`;
-      setCurrentUserId(mockUserId);
-      setCurrentUsername(mockUsername);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
+        setCurrentUserId(user.id);
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("username")
+          .eq("id", user.id)
+          .single();
+        setCurrentUsername(profile?.username || "Player");
+      }
     };
     getCurrentUser();
   }, []);
@@ -1415,8 +1355,7 @@ function App() {
       <MultiplayerLobby
         onCreateRoom={handleCreateRoom}
         onJoinRoom={handleJoinRoom}
-        onSinglePlayer={handleSinglePlayer}
-        onBack={() => navigate("/home")}
+        onBack={() => navigate("/home")} // <-- This goes HERE, not in MultiplayerLobby.tsx
       />
     );
   }
@@ -1458,7 +1397,8 @@ function App() {
     <div
       className="w-screen h-screen flex items-center justify-center overflow-hidden relative"
       style={{
-        background: "linear-gradient(135deg, #1a472a 0%, #2d5a3d 25%, #1e3a28 50%, #0f2419 75%, #0a1810 100%)",
+        backgroundImage:
+          "url(/pokeropoly/public/games/pokeropoly/images/background.png)",
         backgroundSize: "cover",
         backgroundPosition: "center",
       }}
@@ -1625,7 +1565,7 @@ function App() {
         !isMoving &&
         !isRolling &&
         hasRolledThisTurn &&
-        (!currentRoom || roomPlayers[currentPlayerIndex]?.user_id === currentUserId) && (
+        roomPlayers[currentPlayerIndex]?.user_id === currentUserId && (
           <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50">
             <button
               onClick={endTurn}
@@ -1943,7 +1883,7 @@ function App() {
                       !isMoving &&
                       !isRolling && (
                         <div className="h-[340px] flex flex-col items-center justify-center bg-gradient-to-br from-black/20 to-black/10 rounded-xl border-2 border-yellow-500/40 p-4 m-2">
-                          {!currentRoom || roomPlayers[currentPlayerIndex]?.user_id ===
+                          {roomPlayers[currentPlayerIndex]?.user_id ===
                           currentUserId ? (
                             <>
                               <div className="mb-4 flex-shrink-0">
@@ -2050,9 +1990,9 @@ function App() {
                         </div>
 
                         <div className="flex-1 overflow-y-auto px-[20px] pb-[20px] custom-scrollbar">
-                          {/* In single player mode, show all cards. In multiplayer, only show current user's cards */}
-                          {!currentRoom || roomPlayers[index]?.user_id === currentUserId ? (
-                            // Show actual cards for current user or in single player mode
+                          {/* Only show cards if this is the current user's profile */}
+                          {roomPlayers[index]?.user_id === currentUserId ? (
+                            // Show actual cards for current user
                             player.boughtCards.length > 0 ? (
                               <div className="flex flex-wrap justify-center gap-2 min-h-full">
                                 {player.boughtCards.map((card, cardIdx) => (
@@ -2083,7 +2023,7 @@ function App() {
                                 <span>📭 No cards yet</span>
                               </div>
                             )
-                          ) : // Show card backs for other players in multiplayer
+                          ) : // Show card backs for other players
                           player.boughtCards.length > 0 ? (
                             <div className="flex flex-wrap justify-center gap-2 min-h-full">
                               {player.boughtCards.map((card, cardIdx) => (
