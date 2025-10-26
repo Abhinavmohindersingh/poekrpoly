@@ -22,11 +22,6 @@ import {
 
 import { RoomService, Room, RoomPlayer } from "./services/roomService";
 
-interface WildCard {
-  acquiredAtPosition: number;
-  expiresAtPosition: number;
-}
-
 interface Player {
   name: string;
   chips: number;
@@ -36,7 +31,6 @@ interface Player {
   boughtCards: Array<{ suit: string; value: string; position: number }>;
   boardPosition: number;
   suit: string;
-  wildCards: WildCard[];
 }
 
 function App() {
@@ -172,7 +166,6 @@ function App() {
           boughtCards: rp.bought_cards || [],
           boardPosition: rp.board_position || [0, 16, 32, 48][idx],
           suit: rp.player_suit || ["♠", "♥", "♦", "♣"][idx],
-          wildCards: [],
         };
         log("👤", `PLAYER ${idx}: ${player.name} POS: ${player.boardPosition}`);
         return player;
@@ -390,22 +383,9 @@ function App() {
             if (!updated[safeIndex]) {
               updated[safeIndex] = playersRef.current[safeIndex];
             }
-
-            const player = updated[safeIndex];
-            const filteredWildCards = player.wildCards.filter(
-              (wc) => {
-                const expired = newPos === wc.expiresAtPosition;
-                if (expired) {
-                  log("⏰", `WILD CARD EXPIRED AT POS ${newPos}`);
-                }
-                return !expired;
-              }
-            );
-
             updated[safeIndex] = {
               ...updated[safeIndex],
               boardPosition: newPos,
-              wildCards: filteredWildCards,
             };
             playersRef.current = updated;
             return updated;
@@ -420,35 +400,9 @@ function App() {
 
           const card = dealtCards[finalPosition];
           const owner = cardOwners[finalPosition];
-          const isJokerSpace = [5, 11, 21, 27, 37, 43, 53, 59].includes(finalPosition);
-          log("🎯", "LANDED ON", { finalPosition, card, owner, isJokerSpace });
+          log("🎯", "LANDED ON", { finalPosition, card, owner });
 
-          if (isJokerSpace) {
-            log("🃏", "LANDED ON JOKER - ADDING WILD CARD");
-            setPlayers((prev) => {
-              if (prev.length === 0 || !prev[safeIndex]) return prev;
-              const updated = [...prev];
-              const player = updated[safeIndex];
-
-              const filteredWildCards = player.wildCards.filter(
-                (wc) => finalPosition < wc.expiresAtPosition
-              );
-
-              const newWildCard: WildCard = {
-                acquiredAtPosition: finalPosition,
-                expiresAtPosition: (finalPosition + 64) % 64,
-              };
-
-              updated[safeIndex] = {
-                ...player,
-                wildCards: [...filteredWildCards, newWildCard],
-              };
-
-              playersRef.current = updated;
-              log("✅", `WILD CARD ADDED - ACTIVE UNTIL POS ${newWildCard.expiresAtPosition}`);
-              return updated;
-            });
-          } else if (card && owner !== undefined && owner !== safeIndex) {
+          if (card && owner !== undefined && owner !== safeIndex) {
             log("⚠️", "PENALTY TRIGGERED");
             const currentPlayer = playersRef.current[safeIndex];
             const ownerPlayer = playersRef.current[owner];
@@ -2032,23 +1986,18 @@ function App() {
                       <div className="h-[340px] bg-gradient-to-br from-black/20 to-black/10 rounded-xl border-2 border-white/10 p-3 flex flex-col m-2 shadow-inner">
                         <div className="text-white/90 text-xs font-black mb-3 uppercase tracking-wider flex items-center gap-2 flex-shrink-0 drop-shadow">
                           <span>🃏</span>
-                          <span>{player.boughtCards.length + player.wildCards.length} Cards</span>
-                          {player.wildCards.length > 0 && (
-                            <span className="text-yellow-400 text-[10px] bg-purple-600/50 px-2 py-0.5 rounded-full">
-                              +{player.wildCards.length} 🃏
-                            </span>
-                          )}
+                          <span>{player.boughtCards.length} Cards</span>
                         </div>
 
                         <div className="flex-1 overflow-y-auto px-[20px] pb-[20px] custom-scrollbar">
                           {/* Only show cards if this is the current user's profile */}
                           {roomPlayers[index]?.user_id === currentUserId ? (
                             // Show actual cards for current user
-                            player.boughtCards.length > 0 || player.wildCards.length > 0 ? (
+                            player.boughtCards.length > 0 ? (
                               <div className="flex flex-wrap justify-center gap-2 min-h-full">
                                 {player.boughtCards.map((card, cardIdx) => (
                                   <div
-                                    key={`card-${cardIdx}`}
+                                    key={cardIdx}
                                     className="rounded-lg border-3 shadow-xl w-11 h-16 flex flex-col items-center justify-center bg-white p-1 flex-shrink-0 hover:scale-110 transition-transform"
                                     style={{
                                       borderColor: getSuitColor(card.suit),
@@ -2068,20 +2017,6 @@ function App() {
                                     </div>
                                   </div>
                                 ))}
-                                {player.wildCards.map((wildCard, wildIdx) => (
-                                  <div
-                                    key={`wild-${wildIdx}`}
-                                    className="rounded-lg border-3 shadow-xl w-11 h-16 flex flex-col items-center justify-center p-1 flex-shrink-0 hover:scale-110 transition-transform relative overflow-hidden"
-                                    style={{
-                                      background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                                      borderColor: "#FFD700",
-                                    }}
-                                  >
-                                    <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/20 to-purple-600/20 animate-pulse"></div>
-                                    <div className="text-2xl relative z-10">🃏</div>
-                                    <div className="text-[8px] font-bold text-white/80 relative z-10">WILD</div>
-                                  </div>
-                                ))}
                               </div>
                             ) : (
                               <div className="flex items-center justify-center h-full text-white/50 text-sm font-semibold">
@@ -2089,11 +2024,11 @@ function App() {
                               </div>
                             )
                           ) : // Show card backs for other players
-                          player.boughtCards.length > 0 || player.wildCards.length > 0 ? (
+                          player.boughtCards.length > 0 ? (
                             <div className="flex flex-wrap justify-center gap-2 min-h-full">
                               {player.boughtCards.map((card, cardIdx) => (
                                 <div
-                                  key={`card-${cardIdx}`}
+                                  key={cardIdx}
                                   className="rounded-lg border-3 shadow-xl w-11 h-16 flex flex-col items-center justify-center p-1 flex-shrink-0 hover:scale-110 transition-transform"
                                   style={{
                                     background:
@@ -2102,19 +2037,6 @@ function App() {
                                   }}
                                 >
                                   <div className="text-white text-2xl">🂠</div>
-                                </div>
-                              ))}
-                              {player.wildCards.map((wildCard, wildIdx) => (
-                                <div
-                                  key={`wild-${wildIdx}`}
-                                  className="rounded-lg border-3 shadow-xl w-11 h-16 flex flex-col items-center justify-center p-1 flex-shrink-0 hover:scale-110 transition-transform relative overflow-hidden"
-                                  style={{
-                                    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                                    borderColor: "#FFD700",
-                                  }}
-                                >
-                                  <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/20 to-purple-600/20 animate-pulse"></div>
-                                  <div className="text-2xl relative z-10">🃏</div>
                                 </div>
                               ))}
                             </div>
